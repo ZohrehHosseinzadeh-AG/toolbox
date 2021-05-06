@@ -4,7 +4,7 @@ Created on Wed Feb 10 13:20:13 2021
 
 @author: Admin
 """
-
+#
 def get_distances(X,model,mode='l2'):
     distances = []
     weights = []
