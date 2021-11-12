@@ -805,9 +805,13 @@ else:
 OOi = np.zeros(ncl)
 for cl in range(ncl):
     # FF is 4000 ms, take PSTH by spliting time into two parts
-    r = spk.psth(Stimuli['SpikeTrains'][0][cl],2000).y
-    oo = r[[0,1]]
+    r = spk.psth(Stimuli['SpikeTrains'][0][cl],50).y
+    ron=np.max(r[:38])
+    roff=np.max(r[42:])# exclude first 100ms 
+#    oo = r[[0,1]]
+    oo = [ron,roff]
     OOi[cl] = (oo[0]-oo[1])/(oo[0]+oo[1])
+
 # fix NaNs to 0.0
 OOi[np.where(np.isnan(OOi))] = 0.0
 conditions_all = np.copy(conditions)
@@ -1567,15 +1571,19 @@ t=cluster_number
 freqsl= freqsl_b
 plot_stims=[0,1]     
 plot_psd=True  
-frq_table_b=esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls_sta,l,cs,conditions_all,esta_all,psd_all_before,freqsl,Cell_names,plot_stims,t,'rd10_Before_shortsta2',OOi,plot_psd,SAVE_FIGS)
+frq_table_b, tabel=esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls_sta,l,cs,conditions_all,esta_all,psd_all_before,freqsl,Cell_names,plot_stims,t,'rd10_Before_shortsta2',OOi,plot_psd,SAVE_FIGS)
 
-np.mean(frq_table_b,axis=0)
+from scipy.stats import ttest_ind
+ttest,pvall = ttest_ind([i[3] for i in frq_table_b[17:]], [i[3] for i in frq_table_b[:17]])# significance test frequency between upward and downward
+
 
 freqsl= freqsl_a
 t=cluster_number
 plot_stims=[0]       
 frq_table_a=esta_clustsering(spk_data_after,show_order_sta,silhouettes,palette,zssta,fcls_sta,l,cs,conditions_all,esta_all_rd_after,psd_all_after,freqsl,Cell_names_rd_after,plot_stims,t,'rd10_After_shortsta2',OOi,plot_psd,SAVE_FIGS)
 np.median(frq_table_a,axis=0)
+ttest,pvall = ttest_ind([i[0] for i in frq_table_a[17:]], [i[0] for i in frq_table_a[:17]])# significance test frequency between upward and downward
+
 
 #%% PCA
 st_name='Flash'

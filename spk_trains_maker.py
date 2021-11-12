@@ -26,6 +26,7 @@ import scipy.spatial.distance as distance
 from scipy.spatial.distance import squareform
 import sklearn.metrics.cluster as metrics
 from sklearn.metrics import confusion_matrix
+from scipy.special import ndtr as ndtr
 
 from sta import *
 from spikeutilities import *
@@ -277,7 +278,31 @@ def spk_trains_maker(filenames,report_filenames,trigger_filenames,stims):
     return Stimuli, esta_all, Cell_names      
 
 
+#%% chech if the sta is significant
 
+def sta_sif(esta_i):
+
+           
+ #   esta_i=np.asarray(esta_all[i][3].flatten())
+    esta_i_basline=esta_i[30:]
+    esta_i_evoked=esta_i[:26]
+    esta_i_p=np.hstack((esta_i_basline, np.max(esta_i_evoked)))
+    esta_i_t=np.hstack((esta_i_basline, np.min(esta_i_evoked))) 
+
+    df= pd.DataFrame(esta_i_p,columns=['Data_p'])
+    df['Data_t']=esta_i_t    
+    df['Data_zscore_p']=(df['Data_p']-df['Data_p'].mean())/df['Data_p'].std(ddof=0)
+    df['Data_zscore_t']=(df['Data_t']-df['Data_t'].mean())/df['Data_t'].std(ddof=0)
+    df['pval_p']=(1-ndtr(df['Data_zscore_p']))
+    df['pval_t']=(1-ndtr(-df['Data_zscore_t']))   
+    alpha=.001
+    
+    df['statistically_signicicance']=(df.pval_p.iloc[-1]<alpha) |(df.pval_t.iloc[-1]<alpha)#.astype(int) .astype(int)
+
+    sta_sig_condition=False
+    if np.nansum(df['statistically_signicicance'])>0:
+        sta_sig_condition=True
+    return sta_sig_condition    
 
 
 #%%
@@ -573,7 +598,7 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
     #mean_rf_size = np.median((np.abs(STAs['fits'][has_sta,3]),np.abs(STAs['fits'][has_sta,3])))
     mean_rf_size=np.zeros(np.sum(conditions_all), dtype(int))
     ylims = [(0,40),(0,10)]
-        
+    Mean_sta_raw=[]    
     for i, c in enumerate(show_order):
     
         n_units = np.where(fcls == c+1)[0].shape[0]
@@ -651,7 +676,8 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
             else:
                 txt = ''
     #        t_dsi = np.median(DSi[with_sta_cells][:,0])
-            trl_sta=[]    
+            trl_sta=[]
+            trl_sta_raw=[]
             stas=esta_all[conditions_all][np.where(fcls == c+1)]
             for ii in range(len(stas)):
                 if  not(stas[ii]==None):
@@ -665,6 +691,9 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
                         sta_smooth=(sta_smooth-mean(sta_smooth))/std(sta_smooth,ddof=0)
                         trl_sta.append(sta_smooth)
                         
+                        sta_up_smple = make_interp_spline(stime.flatten(), ssta.flatten())( xnew)
+                        trl_sta_raw.append(ssta.flatten())
+                        
                         plt.plot(xnew,sta_smooth,linewidth=.8,alpha=.7)
                         plt.axhline(y=0, color='k', linestyle='--',linewidth=.8)
     #                    ax.set_ylim((stime.min(),stime.max()))
@@ -672,11 +701,17 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
                     
     #                plt.plot(stas[i][2],(stas[i][3]-mean(stas[i][3]))/max(abs(stas[i][3])))
             if trl_sta:
+                Mean_sta_raw.append(mean(trl_sta_raw,axis=0))
+
                 plt.plot(xnew,mean(trl_sta,axis=0),linewidth=1.5,color='k')
+                p2=sta_sif((mean(trl_sta_raw,axis=0)))
+                if p2:
+                    plt.text(.23, .85*max(mean(trl_sta,axis=0)), "*", fontsize=12)
             ax.set_title(txt)
             ax.set_xticks(())
             ax.set_yticks(())
             ax.set_xlim((-1,0.5))
+
     
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -843,7 +878,17 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
        plt.savefig('clusters_e_STA_color_mixed_'+name+'.pdf', bbox_inches='tight')
        plt.savefig('clusters_e_STA_color_mixed_'+name+'.svg', bbox_inches='tight')
         
-        
+    #%% find the width and latancy of each sta (average of cluster)
+    from tabulate import tabulate
+    from spk_trains_maker import find_peaks_latency_STA
+    
+   # D1_D2=find_peaks_latency_STA(Mean_sta_raw,stime,'rd10sta_latency'+name)
+    D1_D2=STA_latency_easy(Mean_sta_raw,stime,'rd10sta_latency'+name)
+    #STA_width_latency_func(Mean_sta_visual)
+    
+    print(tabulate(np.round(D1_D2,2), headers=["cl#","w1-peak", "w2-trough", "l1-peak","l2-trough"]))
+    with open('table_STA_latency_width_rd10sta_latency' +name+'.txt', 'w') as f:
+        f.write(tabulate(np.round(D1_D2,2)))    
         
     Cells_names_and_clusters_sta=list(zip(Cell_names[conditions_all],fcls))
         
@@ -854,8 +899,7 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
         
 
             
-            #% make table of requancies
-    from tabulate import tabulate
+    #%% make table of frequancies
     
     print(tabulate(np.round(peak_frq_table,2), headers=["peak freq", "f1 50%", "f2 50%","bw"]))
     with open('table_rd10_freqs_'+name+'.txt', 'w') as f:
@@ -864,16 +908,26 @@ def esta_clustsering(Stimuli,show_order_sta,silhouettes,palette,zssta,fcls,l,cs,
     
     return peak_frq_table
 #%%
+matplotlib.use('TkAgg')
+import numpy as np
+from scipy.interpolate import make_interp_spline
+#Mean_sta=Mean_sta_visual
+#plot(goodstas[0][3])
 
-def find_peaks_latency_STA(Mean_sta,figname):
+def find_peaks_latency_STA(Mean_sta,stime,figname):
     tabel=[]
-    binlenght=40
-    shift=2
+    upsampling=5
+    binlenght=40/upsampling
+    shift=5
+    upshift=upsampling*shift
     for c in range(len(Mean_sta)):
         len_sta=int(len(Mean_sta[0])/2+shift)
         rsta=Mean_sta[c][:len_sta].flatten()# includes 100 ms before zero
-        rsta=np.flip(rsta,axis=0)
-        msta=mean(Mean_sta[c][len_sta:])
+        xnew = np.linspace(stime[:len_sta].min(), stime[:len_sta].max(), upsampling*len(rsta)) # five times upsampling
+                    
+        sta_smooth = make_interp_spline(stime[:len_sta].flatten(), rsta.flatten())(xnew)
+        rsta=np.flip(sta_smooth,axis=0)
+        msta=np.mean(Mean_sta[c][len_sta:])
         
         from scipy.signal import chirp, find_peaks, peak_widths
         import matplotlib.pyplot as plt
@@ -885,70 +939,74 @@ def find_peaks_latency_STA(Mean_sta,figname):
         #Ppeaks, _ = find_peaks(rsta)
         #Npeaks, _ = find_peaks(-rsta)
         
-        Ppeaks=np.argmax(rsta)
-        Npeaks=np.argmin(rsta)
+        Ppeaks=np.argmax(rsta[upshift:])
+        Npeaks=np.argmin(rsta[upshift:])
 
-        D1=Ppeaks*binlenght-shift*binlenght# remove 100 ms before zero
-        D2=Npeaks*binlenght-shift*binlenght# remove 100ms before zero
-        thrp=msta+abs(rsta[Ppeaks]-msta)/2
+        D1=Ppeaks*binlenght#-shift*binlenght# remove 100 ms before zero
+        D2=Npeaks*binlenght#-shift*binlenght# remove 100ms before zero
+        thrp=msta+abs(rsta[Ppeaks+upshift]-msta)/2
         
         for iP1 in range(len(rsta)-Ppeaks):
-            if rsta[Ppeaks+iP1]<thrp:
+            if rsta[Ppeaks+upshift+iP1]<thrp:
                break
-        if Npeaks>1:   
-            for iP2 in range(Ppeaks):
-                if rsta[Ppeaks-iP2]<thrp:
+        if Npeaks>0:   
+            for iP2 in range(Ppeaks+upshift):
+                if rsta[Ppeaks+upshift-iP2]<thrp:
                     break
         else:
             iP2=-1 
             
         w1=abs((Ppeaks+iP2/2)-(Ppeaks-iP1/2))*binlenght
         
-        thrn=msta-abs(rsta[Npeaks]-msta)/2
+        thrn=msta-abs(rsta[Npeaks+upshift]-msta)/2
         
-        if Npeaks>1:
-            for iN1 in range(Npeaks):
-                if rsta[Npeaks-iN1]>thrn:
+        if Npeaks>0:
+            for iN1 in range(Npeaks+upshift):
+                if rsta[Npeaks+upshift-iN1]>thrn:
                    break   
         else:
             iN1=-1   
         
         for iN2 in range(len(rsta)-Npeaks):
-            if rsta[Npeaks+iN2]>thrn:
+            if rsta[Npeaks+upshift+iN2]>thrn:
                 break 
         w2=abs((Npeaks+iN2/2)-(Npeaks-iN1/2))*binlenght
         
-       
+        t1=np.arange(0, len(rsta), step=50)*binlenght
+        t=(t1-upshift*binlenght)/1000
         fig, ax =plt.subplots()
+
         plt.plot(rsta)
-        plt.hlines(msta-abs(rsta[Npeaks]-msta)/2, xmin = Npeaks-iN1, xmax = Npeaks+iN2,color="C1") # width of negative peak
-        plt.hlines(msta+abs(rsta[Ppeaks]-msta)/2, xmin = Ppeaks-iP2, xmax = Ppeaks+iP1,color="C30")  # width of positive peak
+        plt.hlines(msta-abs(rsta[Npeaks+upshift]-msta)/2, xmin = Npeaks+upshift-iN1, xmax = Npeaks+upshift+iN2,color="C1") # width of negative peak
+        plt.hlines(msta+abs(rsta[Ppeaks+upshift]-msta)/2, xmin = Ppeaks+upshift-iP2, xmax = Ppeaks+upshift+iP1,color="C30")  # width of positive peak
         
-        plt.vlines(Ppeaks, ymin =msta , ymax = rsta[Ppeaks],color="C5")
-        plt.vlines(Npeaks, ymin = rsta[Npeaks], ymax = msta,color="C5")
-        plt.hlines(msta, xmin = 0, xmax = len_sta,linestyles='dashed')
-        plt.vlines(shift, ymin = msta, ymax = rsta[Ppeaks],linestyles='dashed')
+        plt.vlines(Ppeaks+upshift, ymin =msta , ymax = rsta[Ppeaks+upshift],color="C5")
+        plt.vlines(Npeaks+upshift, ymin = rsta[Npeaks+upshift], ymax = msta,color="C5")
+        
+        plt.hlines(msta, xmin = 0, xmax = len(rsta),linestyles='dashed')
+        plt.vlines(upshift, ymin = msta, ymax = rsta[Ppeaks+upshift],linestyles='dashed')
 
 
         
-        plt.text(Ppeaks, thrp, " %.0f   " % (w1), fontsize=11)
-        plt.text(Npeaks, thrn, " %.0f   " % (w2), fontsize=11)
+        plt.text(Ppeaks+upshift+5, thrp, " %.0f   " % (w1), fontsize=11)
+        plt.text(Npeaks+upshift+5, thrn, " %.0f   " % (w2), fontsize=11)
         
-        plt.plot(Ppeaks, rsta[Ppeaks], "x")
-        plt.plot(Npeaks, rsta[Npeaks], "x")
+        plt.plot(Ppeaks+upshift, rsta[Ppeaks+upshift], "x")
+        plt.plot(Npeaks+upshift, rsta[Npeaks+upshift], "x")
         plt.title(np.str(len(Mean_sta)-c))
-        labels = [item.get_text() for item in ax.get_xticklabels()]
+        plt.xticks(np.arange(0, len(rsta), step=50),t)
+
+        #labels = [item.get_text() for item in ax.get_xticklabels()]
         
-        t2=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-        t1=np.arange(shift, len(rsta), step=10)
-        
+
+        #t2=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+
         #t2=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 #        t1=np.arange(shift, len(rsta), step=3)
 #        t2=(t1-2)*binlenght/1000
-#        xticks(t1,t2)
-        plt.xlabel('time s')
+        #plt.xlabel('time s')
         #labels = tt
-        
+
         #ax.set_xticklabels(labels)
         #xticks(tt)
         plt.savefig('STA_width_latency'+figname+np.str(len(Mean_sta)-c)+'.pdf', bbox_inches='tight')       
@@ -979,4 +1037,127 @@ def find_peaks_latency_STA(Mean_sta,figname):
         tabel.append((len(Mean_sta)-c,w1,w2,D1,D2))
     np.save('latncy_widths_STA_'+figname,tabel)
    
+    #return tabel
+
+
+#%%
+def STA_latency_easy(Mean_sta,stime,figname):
+
+   # Mean_sta=Mean_sta_raw
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import numpy as np
+    from scipy.interpolate import make_interp_spline
+    from scipy.signal import chirp, find_peaks, peak_widths
+    import matplotlib.pyplot as plt
+    tabel=[]
+    upsampling=5
+    binlenght=40/upsampling
+    shift=5
+    upshift=upsampling*shift
+    for c in range(len(Mean_sta)):
+        len_sta=int(len(Mean_sta[c])/2+shift)
+
+        len_sta=int(len(Mean_sta[c])/2+shift)
+        rsta=Mean_sta[c][:len_sta].flatten()# includes 100 ms before zero
+        xnew = np.linspace(stime[:len_sta].min(), stime[:len_sta].max(), upsampling*len(rsta)) # five times upsampling
+                    
+        sta_smooth = make_interp_spline(stime[:len_sta].flatten(), rsta.flatten())(xnew)
+        rsta=np.flip(sta_smooth,axis=0)
+        msta=np.mean(Mean_sta[c][len_sta:])
+        #rsta-=np.mean(rsta)
+        peaksP, v_peaks = find_peaks(rsta[upshift:])
+        peaksN, v_peaks = find_peaks(-rsta[upshift:])
+        fig = plt.figure(figsize=(12,8))
+
+        plt.plot( rsta)
+        
+        plt.plot(peaksP+upshift,rsta[peaksP+upshift], "x",color="green",linewidth=4, markersize=12)   
+        plt.plot(peaksN+upshift,rsta[peaksN+upshift], "x",color="red",linewidth=4, markersize=12)   
+        plt.hlines(msta, xmin = 0, xmax = len(rsta),linestyles='dashed')
+        
+        plt.vlines(upshift, ymin = msta, ymax = rsta[np.argmax(rsta)],linestyles='dashed')
+
+        #plt.hlines(0, xmin = 0, xmax = len(rsta),color="C1") # width of negative peak
+        
+        
+        matplotlib.use('TkAgg')
+        plt.title('sta', fontweight ="bold")
+        
+        
+        print("After 3 clicks :")
+        x1 = plt.ginput(2)
+        print(x1)
+        x1=np.array(x1)
+        x1 = x1.T[0]-upshift
+        Ppeaks=min(peaksP, key=lambda x:abs(x-x1[0]))
+        Npeaks=min(peaksN, key=lambda x:abs(x-x1[1]))
+        #Ppeaks=x[0][0]#np.argmax(rsta[upshift:]
+        #Npeaks=x[1][0]#np.argmin(rsta[upshift:])
+
+        D1=Ppeaks*binlenght#-shift*binlenght# remove 100 ms before zero
+        D2=Npeaks*binlenght#-shift*binlenght# remove 100ms before zero
+        thrp=msta+abs(rsta[Ppeaks+upshift]-msta)/2
+        
+        for iP1 in range(len(rsta)-Ppeaks):
+            if rsta[Ppeaks+upshift+iP1]<thrp:
+               break
+        if Npeaks>0:   
+            for iP2 in range(Ppeaks+upshift):
+                if rsta[Ppeaks+upshift-iP2]<thrp:
+                    break
+        else:
+            iP2=-1 
+            
+        w1=abs((Ppeaks+iP2/2)-(Ppeaks-iP1/2))*binlenght
+        
+        thrn=msta-abs(rsta[Npeaks+upshift]-msta)/2
+        
+        if Npeaks>0:
+            for iN1 in range(Npeaks+upshift):
+                if rsta[Npeaks+upshift-iN1]>thrn:
+                   break   
+        else:
+            iN1=-1   
+        
+        for iN2 in range(len(rsta)-Npeaks):
+            if rsta[Npeaks+upshift+iN2]>thrn:
+                break 
+        w2=abs((Npeaks+iN2/2)-(Npeaks-iN1/2))*binlenght
+        
+        t1=np.arange(0, len(rsta), step=50)*binlenght
+        t=(t1-upshift*binlenght)/1000
+        fig, ax =plt.subplots()
+
+        plt.plot(rsta)
+        plt.hlines(msta-abs(rsta[Npeaks+upshift]-msta)/2, xmin = Npeaks+upshift-iN1, xmax = Npeaks+upshift+iN2,color="C1") # width of negative peak
+        plt.hlines(msta+abs(rsta[Ppeaks+upshift]-msta)/2, xmin = Ppeaks+upshift-iP2, xmax = Ppeaks+upshift+iP1,color="C30")  # width of positive peak
+        
+        plt.vlines(Ppeaks+upshift, ymin =msta , ymax = rsta[Ppeaks+upshift],color="C5")
+        plt.vlines(Npeaks+upshift, ymin = rsta[Npeaks+upshift], ymax = msta,color="C5")
+        
+        plt.hlines(msta, xmin = 0, xmax = len(rsta),linestyles='dashed')
+        plt.vlines(upshift, ymin = msta, ymax = rsta[np.argmax(rsta)],linestyles='dashed')
+        
+        
+        
+        plt.text(Ppeaks+upshift+5, thrp, " %.0f   " % (w1), fontsize=11)
+        plt.text(Npeaks+upshift+5, thrn, " %.0f   " % (w2), fontsize=11)
+        
+        plt.plot(Ppeaks+upshift, rsta[Ppeaks+upshift], "x")
+        plt.plot(Npeaks+upshift, rsta[Npeaks+upshift], "x")
+        plt.title(np.str(len(Mean_sta)-c))
+        plt.xticks(np.arange(0, len(rsta), step=50),t)
+        # thismanager = plt.get_current_fig_manager()
+        # thismanager.window.SetPosition((59999999990, 9999915))
+        plt.show()
+        
+        plt.savefig('STA_width_latency_new'+figname+np.str(len(Mean_sta)-c)+'.pdf', bbox_inches='tight')       
+
+        plt.show()
+        tabel.append((len(Mean_sta)-c,w1,w2,D1,D2))
+        np.save('latncy_widths_STA_new'+figname,tabel)
+   
     return tabel
+        # results_half = peak_widths(np.sin(t), peaks, rel_height=0.5)
+        # results_full = peak_widths(np.sin(t), peaks, rel_height=1)
