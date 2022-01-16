@@ -16,10 +16,10 @@ Created on Tue Nov 10 11:39:57 2020
 # Recording
 
 # Recording
-notebooks_path = "C:/Users/Admin/Desktop/hennig_project/download/rgcclassification/sample_dara_hamed/"
-data_path = "C:/Users/Admin/Desktop/hennig_project/download/rgcclassification/sample_dara_hamed/"
+notebooks_path = "C:/Users/hamed/Desktop/Hamed/github/Spike_distance_clistering/Bionic_Visison_Clustering/"
+data_path = "C:/Users/hamed/Desktop/Hamed/github/Spike_distance_clistering/Bionic_Visison_Clustering/Matlab_data/"
 
-data_dir ="C:/Users/Admin/Desktop/hennig_project/download/rgcclassification/sample_dara_hamed/"
+data_dir ="C:/Users/hamed/Desktop/Hamed/github/Spike_distance_clistering/Bionic_Visison_Clustering/Matlab_data/"
 #filenames=['2019_07_21_wl_secondmouce.mat','2018_12_12_left_nasal.mat','2020_01_17_rhalf1.mat','2018_11_28_WT_Left.mat','2018_11_29_WT1_Left.mat','2019_07_17_mrg.mat','2019_07_16_lw.mat','2020_01_25_r1.mat','2020_02_04_l1_before.mat','2020_02_06_r1_before.mat','2020_01_25_left.mat','2020_01_16_wl.mat']
 filenames=['2020_01_17_rhalf1.mat','2020_01_25_r1.mat','2020_02_04_l1_before.mat','2020_02_06_r1_before.mat','2020_01_25_left.mat','2020_01_16_wl.mat'
            ,'2020_06_03_l2.mat','2020_06_17_r1.mat','2020_06_18_r2.mat','2020_06_18_r1.mat','2020_06_18_l1.mat'
@@ -87,7 +87,7 @@ MIN_SPIKES_CHIRP =1# min spikes in Chirp stimulus
 
 
 # set to True to save the figures generated below
-SAVE_FIGS = False
+SAVE_FIGS = True
 
 
 import os.path, sys
@@ -748,6 +748,7 @@ plt.legend()
 # obtain Gap statistic
 tss = np.arange(0.3,3,0.01) # threshold values to test
 gaps = np.empty((3,2,tss.shape[0]))
+
 NCs_gap = np.empty((3,2,tss.shape[0]))
 
 ncls = np.arange(3,61,1)
@@ -794,19 +795,24 @@ plt.figure(figsize=(12,4))
 ax = plt.subplot(121)
 s_labels = ('Flash','Chirp','Flash_Chirp_color')
 d_labels = ('ISI distance','SPIKE distance','SPIKE distance 2')
+
+gaps[gaps == np.Inf] = np.NaN# I added 2022
+
 with plt.rc_context(rcParams):
     for s in (0,1,2):
         for d in (0,1):
             p = plt.plot(NCs_gap[s,d,:],gaps[s,d,:], label=s_labels[s]+'; '+d_labels[d])
-            print(s_labels[s]+' '+d_labels[d]+' gap stat peak at '+str(NCs_gap[s,d,np.argmax(gaps[s,d])])+' clusters')
-            plt.vlines(NCs_gap[s,d,np.argmax(gaps[s,d])],0,gaps[s,d,np.argmax(gaps[s,d])],linestyles='--',colors=p[0].get_c())
+            print(s_labels[s]+' '+d_labels[d]+' gap stat peak at '+str(NCs_gap[s,d,np.nanargmax(gaps[s,d])])+' clusters')
+            print([s,d ,NCs_gap[s,d,np.nanargmax(gaps[s,d])],np.nanargmax(gaps[s,d])])
+
+            plt.vlines(NCs_gap[s,d,np.nanargmax(gaps[s,d])],0,gaps[s,d,np.nanargmax(gaps[s,d])],linestyles='--',colors=p[0].get_c())
 plt.xlim((0,40))
 plt.ylim((0,0.7))
 plt.legend(frameon=False,loc = 'upper left')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 plt.xlabel('Number of clusters')
-plt.ylabel('Gap statistic');
+plt.ylabel('Gap statistic')
 
 ax = plt.subplot(122)
 m = 0# use mutual info
