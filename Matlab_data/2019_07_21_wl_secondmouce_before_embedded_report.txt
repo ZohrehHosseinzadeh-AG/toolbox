@@ -1,0 +1,13 @@
+ ND: 4.5
+ Executing sequence: D:\Stimuli\Images\Fullfield
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 60
+ Num of stimuli displayed: 60
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\chirp2
+ Num of refresh per stimulus: 1
+ Num of stimuli to be displayed: 10
+ Num of stimuli displayed: 10
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\color
+ Num of refresh per stimulus: 1
+ Num of stimuli to be displayed: 15
+ Num of stimuli displayed: 15

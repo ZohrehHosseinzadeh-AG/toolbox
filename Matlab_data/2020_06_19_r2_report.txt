@@ -1,0 +1,45 @@
+ ND: 4.5
+ Executing sequence: D:\Stimuli\Images\Fullfield
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 60
+ Num of stimuli displayed: 60
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\chirp2
+ Num of refresh per stimulus: 2
+ Num of stimuli to be displayed: 10
+ Num of stimuli displayed: 10
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d0
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 45
+ Num of stimuli displayed: 45
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d45
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 51
+ Num of stimuli displayed: 51
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d90
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 30
+ Num of stimuli displayed: 30
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d135
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 51
+ Num of stimuli displayed: 51
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d180
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 45
+ Num of stimuli displayed: 45
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d225
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 51
+ Num of stimuli displayed: 51
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d270
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 30
+ Num of stimuli displayed: 30
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\movingbar\d315
+ Num of refresh per stimulus: 3
+ Num of stimuli to be displayed: 51
+ Num of stimuli displayed: 51
+ Executing sequence: D:\Stimuli\Images\Gratings\KarinaContrast\color
+ Num of refresh per stimulus: 2
+ Num of stimuli to be displayed: 30
+ Num of stimuli displayed: 30

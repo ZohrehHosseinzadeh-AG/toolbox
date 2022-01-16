@@ -1,0 +1,5 @@
+ ND: 4.5
+ Executing sequence: D:\Stimuli\Images\Fullfield
+ Num of refresh per stimulus: 4
+ Num of stimuli to be displayed: 80
+ Num of stimuli displayed: 80
